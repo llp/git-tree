@@ -465,17 +465,11 @@ function App() {
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      // Filter for "interesting" commits (Refs, Merges, Forks)
-      // Note: Forks are hard to detect without full graph traversal.
-      // For now, we use Refs and Merges.
+      // Filter for "interesting" commits (Refs, Roots)
+      // Removed Merges (c.parents.length > 1) from filter as requested
       const interestingCommits = commits.filter(c => 
-          c.refs.length > 0 || c.parents.length > 1 || c.parents.length === 0
+          c.refs.length > 0 || c.parents.length === 0
       );
-      
-      // We also need to include commits that are parents of interesting commits, 
-      // if those parents are not already interesting, to maintain connectivity?
-      // Actually, we can just draw edges between interesting commits.
-      // But we need to know WHICH interesting commit is the ancestor.
       
       // Build a map for fast lookup
       const commitMap = new Map(commits.map(c => [c.oid, c]));
@@ -496,7 +490,9 @@ function App() {
                   const ancestor = commitMap.get(runner);
                   if (!ancestor) break; 
                   
-                  if (ancestor.refs.length > 0 || ancestor.parents.length > 1 || ancestor.parents.length === 0) {
+                  // Check if ancestor is interesting
+                  // Must match the filter above!
+                  if (ancestor.refs.length > 0 || ancestor.parents.length === 0) {
                       simplifiedEdges.push({ from: commit.oid, to: runner, distance });
                       break;
                   }
@@ -508,8 +504,10 @@ function App() {
           });
       });
       
-      const ROW_HEIGHT = 80;
-      const COL_WIDTH = 180;
+      // Layout Logic for Topology
+      // We can reuse the column logic but with the filtered list
+      const ROW_HEIGHT = 80; // Larger for topology
+      const COL_WIDTH = 180; // Wider columns for labels
       const PADDING_TOP = 40;
       const PADDING_LEFT = 40;
       
@@ -536,6 +534,7 @@ function App() {
           }
           columns[commit.oid] = col;
           
+          // Find edges from this commit
           const edges = simplifiedEdges.filter(e => e.from === commit.oid);
           edges.forEach((edge, idx) => {
               if (idx === 0) {
@@ -570,22 +569,12 @@ function App() {
       }
 
       // Update internal resolution if needed
-      // We need to ensure the internal resolution covers the scrollable area if we want to draw everything at once
-      // OR we rely on the browser to clip/scroll the element.
-      // But canvas drawing is pixel-based. If we set width=1000 but draw at x=2000, it won't show.
-      // So internal width/height must match the full scrollable size.
-      
       if (canvas.width !== totalWidth * dpr || canvas.height !== totalHeight * dpr) {
           canvas.width = totalWidth * dpr;
           canvas.height = totalHeight * dpr;
           // After resizing, context is reset, so we need to scale again and redraw
           ctx.scale(dpr, dpr);
-          // We can just return here and let the next frame draw, or continue drawing.
-          // Let's continue drawing but ensure scale is set.
       } else {
-          // If size didn't change, we still need to clear and scale (already done at start)
-          // But wait, if we resized above, we need to re-apply scale.
-          // Let's just re-apply scale always.
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Reset transform to identity * dpr
           ctx.clearRect(0, 0, totalWidth, totalHeight);
       }
@@ -599,7 +588,7 @@ function App() {
               const fromCol = columns[edge.from];
               const toCol = columns[edge.to];
               
-              const x1 = PADDING_LEFT + fromCol * COL_WIDTH + 10; 
+              const x1 = PADDING_LEFT + fromCol * COL_WIDTH + 10; // Center of node
               const y1 = PADDING_TOP + fromIdx * ROW_HEIGHT;
               const x2 = PADDING_LEFT + toCol * COL_WIDTH + 10;
               const y2 = PADDING_TOP + toIdx * ROW_HEIGHT;
@@ -634,6 +623,7 @@ function App() {
           
           nodePositions.current.push({ oid: commit.oid, x: x + 10, y, radius: 15 });
           
+          // Draw Box
           const boxWidth = 150;
           const boxHeight = 40;
           
@@ -641,15 +631,18 @@ function App() {
           ctx.strokeStyle = getBranchColor(col);
           ctx.lineWidth = 2;
           
+          // Draw a pill or box
           roundRect(ctx, x - 10, y - boxHeight/2, boxWidth, boxHeight, 6);
           ctx.fill();
           ctx.stroke();
           
+          // Draw Text
           ctx.fillStyle = "#333";
           ctx.font = "bold 12px Inter, sans-serif";
           
           let label = "";
           if (commit.refs.length > 0) {
+              // Show branch name
               label = commit.refs[0].name;
           } else if (commit.parents.length > 1) {
               label = "Merge";
@@ -657,12 +650,14 @@ function App() {
               label = commit.oid.substring(0, 7);
           }
           
+          // Truncate label if too long
           if (label.length > 20) {
               label = label.substring(0, 17) + "...";
           }
           
           ctx.fillText(label, x, y + 4);
           
+          // Draw Ref badges if multiple
           if (commit.refs.length > 1) {
               ctx.font = "10px Inter, sans-serif";
               ctx.fillStyle = "#666";
