@@ -494,25 +494,22 @@ function App() {
                   seen.add(runner);
                   
                   const ancestor = commitMap.get(runner);
-                  if (!ancestor) break; // Should not happen if we have full history
+                  if (!ancestor) break; 
                   
-                  // Check if ancestor is interesting
                   if (ancestor.refs.length > 0 || ancestor.parents.length > 1 || ancestor.parents.length === 0) {
                       simplifiedEdges.push({ from: commit.oid, to: runner, distance });
                       break;
                   }
                   
                   if (ancestor.parents.length === 0) break;
-                  runner = ancestor.parents[0]; // Follow first parent
+                  runner = ancestor.parents[0]; 
                   distance++;
               }
           });
       });
       
-      // Layout Logic for Topology
-      // We can reuse the column logic but with the filtered list
-      const ROW_HEIGHT = 80; // Larger for topology
-      const COL_WIDTH = 180; // Wider columns for labels
+      const ROW_HEIGHT = 80;
+      const COL_WIDTH = 180;
       const PADDING_TOP = 40;
       const PADDING_LEFT = 40;
       
@@ -539,7 +536,6 @@ function App() {
           }
           columns[commit.oid] = col;
           
-          // Find edges from this commit
           const edges = simplifiedEdges.filter(e => e.from === commit.oid);
           edges.forEach((edge, idx) => {
               if (idx === 0) {
@@ -560,13 +556,38 @@ function App() {
           });
       });
 
+      // Calculate required dimensions
       const totalHeight = (interestingCommits.length + 1) * ROW_HEIGHT + PADDING_TOP;
-      if (canvas.height / dpr < totalHeight) {
-          if (canvas.style.height !== `${totalHeight}px`) {
-              canvas.style.height = `${totalHeight}px`;
-              requestAnimationFrame(drawTopology);
-              return;
-          }
+      const maxCol = Math.max(...Object.values(columns), 0);
+      const totalWidth = (maxCol + 1) * COL_WIDTH + PADDING_LEFT + 200; // Extra padding for labels
+
+      // Update canvas style size to allow scrolling
+      if (canvas.style.height !== `${totalHeight}px`) {
+          canvas.style.height = `${totalHeight}px`;
+      }
+      if (canvas.style.width !== `${totalWidth}px`) {
+          canvas.style.width = `${totalWidth}px`;
+      }
+
+      // Update internal resolution if needed
+      // We need to ensure the internal resolution covers the scrollable area if we want to draw everything at once
+      // OR we rely on the browser to clip/scroll the element.
+      // But canvas drawing is pixel-based. If we set width=1000 but draw at x=2000, it won't show.
+      // So internal width/height must match the full scrollable size.
+      
+      if (canvas.width !== totalWidth * dpr || canvas.height !== totalHeight * dpr) {
+          canvas.width = totalWidth * dpr;
+          canvas.height = totalHeight * dpr;
+          // After resizing, context is reset, so we need to scale again and redraw
+          ctx.scale(dpr, dpr);
+          // We can just return here and let the next frame draw, or continue drawing.
+          // Let's continue drawing but ensure scale is set.
+      } else {
+          // If size didn't change, we still need to clear and scale (already done at start)
+          // But wait, if we resized above, we need to re-apply scale.
+          // Let's just re-apply scale always.
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Reset transform to identity * dpr
+          ctx.clearRect(0, 0, totalWidth, totalHeight);
       }
 
       // Draw Edges
@@ -578,7 +599,7 @@ function App() {
               const fromCol = columns[edge.from];
               const toCol = columns[edge.to];
               
-              const x1 = PADDING_LEFT + fromCol * COL_WIDTH + 10; // Center of node
+              const x1 = PADDING_LEFT + fromCol * COL_WIDTH + 10; 
               const y1 = PADDING_TOP + fromIdx * ROW_HEIGHT;
               const x2 = PADDING_LEFT + toCol * COL_WIDTH + 10;
               const y2 = PADDING_TOP + toIdx * ROW_HEIGHT;
@@ -602,9 +623,6 @@ function App() {
               }
               ctx.stroke();
               ctx.setLineDash([]);
-              
-              // Draw arrow head
-              // Simple arrow at the end? Or middle?
           }
       });
 
@@ -616,7 +634,6 @@ function App() {
           
           nodePositions.current.push({ oid: commit.oid, x: x + 10, y, radius: 15 });
           
-          // Draw Box
           const boxWidth = 150;
           const boxHeight = 40;
           
@@ -624,18 +641,15 @@ function App() {
           ctx.strokeStyle = getBranchColor(col);
           ctx.lineWidth = 2;
           
-          // Draw a pill or box
           roundRect(ctx, x - 10, y - boxHeight/2, boxWidth, boxHeight, 6);
           ctx.fill();
           ctx.stroke();
           
-          // Draw Text
           ctx.fillStyle = "#333";
           ctx.font = "bold 12px Inter, sans-serif";
           
           let label = "";
           if (commit.refs.length > 0) {
-              // Show branch name
               label = commit.refs[0].name;
           } else if (commit.parents.length > 1) {
               label = "Merge";
@@ -643,14 +657,12 @@ function App() {
               label = commit.oid.substring(0, 7);
           }
           
-          // Truncate label if too long
           if (label.length > 20) {
               label = label.substring(0, 17) + "...";
           }
           
           ctx.fillText(label, x, y + 4);
           
-          // Draw Ref badges if multiple
           if (commit.refs.length > 1) {
               ctx.font = "10px Inter, sans-serif";
               ctx.fillStyle = "#666";
