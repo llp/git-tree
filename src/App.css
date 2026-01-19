@@ -55,6 +55,31 @@ body, html {
     background-color: #f9f9f9;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+}
+
+.view-toggle {
+    display: flex;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.view-toggle button {
+    background: none;
+    border: none;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.view-toggle button.active {
+    background-color: white;
+    color: #333;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    font-weight: bold;
 }
 
 .add-repo-form {
@@ -322,6 +347,19 @@ canvas {
   .toolbar {
       background-color: #333;
       border-bottom: 1px solid #444;
+  }
+
+  .view-toggle {
+      background-color: #444;
+  }
+
+  .view-toggle button {
+      color: #aaa;
+  }
+
+  .view-toggle button.active {
+      background-color: #555;
+      color: white;
   }
 
   .repo-item {
