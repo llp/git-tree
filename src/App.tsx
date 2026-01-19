@@ -240,7 +240,7 @@ function App() {
     
     nodePositions.current = [];
 
-    commits.forEach((commit, index) => {
+    commits.forEach((commit, _) => {
       let col = -1;
       
       // 1. Check if this commit is the "next" in an active lane
@@ -702,8 +702,8 @@ function App() {
       const y = e.clientY - rect.top;
       
       // Adjust hit detection based on view mode
-      const ROW_HEIGHT = viewMode === 'topology' ? 80 : 50;
-      const PADDING_TOP = viewMode === 'topology' ? 40 : 30;
+      // const ROW_HEIGHT = viewMode === 'topology' ? 80 : 50;
+      // const PADDING_TOP = viewMode === 'topology' ? 40 : 30;
       
       // Use nodePositions which is updated by both draw functions
       // But we need to be careful about the index approximation
